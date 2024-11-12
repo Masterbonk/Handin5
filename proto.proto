@@ -1,0 +1,14 @@
+syntax = "proto3";
+option go_package = "Client/Client";
+
+message ClientMessage {
+    string msg = 1;
+    int32 key = 2;
+}
+
+message Empty {}
+
+// Interface exposed by the client
+service Client {
+    rpc passAlong (ClientMessage) returns (Empty) {};
+}
