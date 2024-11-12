@@ -55,7 +55,6 @@ func (s *server) PassAlong(ctx context.Context, clientMessage *cc.ClientMessage)
 	}
 	lastMsg = clientMessage.Msg
 
-
 	//Making client
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -67,14 +66,13 @@ func (s *server) PassAlong(ctx context.Context, clientMessage *cc.ClientMessage)
 		log.Fatalf("Failed to dial: %v", err)
 	}
 
-
 	// create client
 	client := cc.NewClientClient(conn)
 
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
 
 	go func() {
-			// close connection when function terminates
+		// close connection when function terminates
 		defer conn.Close()
 		client.PassAlong(newContext, clientMessage)
 	}()
@@ -117,7 +115,7 @@ func main() {
 
 	go QueueUp(port)
 	grpcServer.Serve(lis)
-	
+
 }
 
 func QueueUp(port string) {
