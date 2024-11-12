@@ -1,14 +1,24 @@
 syntax = "proto3";
 option go_package = "Client/Client";
 
-message ClientMessage {
-    string msg = 1;
-    int32 key = 2;
+message Amount {
+    int64 Value = 1;
+}
+
+message Acknowladgement {
+    string Ack = 1; //fail, success or exception
+}
+
+message Outcome {
+    bool AuctionDone = 1;
+    int64 HighestValue = 2;
 }
 
 message Empty {}
 
 // Interface exposed by the client
-service Client {
-    rpc passAlong (ClientMessage) returns (Empty) {};
+service Server {
+    rpc bid (Amount) returns (Acknowladgement) {};
+
+    rpc result (Empty) returns (Outcome) {};
 }

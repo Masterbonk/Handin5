@@ -20,29 +20,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ClientMessage struct {
+type Amount struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Msg string `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
-	Key int32  `protobuf:"varint,2,opt,name=key,proto3" json:"key,omitempty"`
+	Value int64 `protobuf:"varint,1,opt,name=Value,proto3" json:"Value,omitempty"`
 }
 
-func (x *ClientMessage) Reset() {
-	*x = ClientMessage{}
+func (x *Amount) Reset() {
+	*x = Amount{}
 	mi := &file_proto_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClientMessage) String() string {
+func (x *Amount) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClientMessage) ProtoMessage() {}
+func (*Amount) ProtoMessage() {}
 
-func (x *ClientMessage) ProtoReflect() protoreflect.Message {
+func (x *Amount) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -54,21 +53,112 @@ func (x *ClientMessage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClientMessage.ProtoReflect.Descriptor instead.
-func (*ClientMessage) Descriptor() ([]byte, []int) {
+// Deprecated: Use Amount.ProtoReflect.Descriptor instead.
+func (*Amount) Descriptor() ([]byte, []int) {
 	return file_proto_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ClientMessage) GetMsg() string {
+func (x *Amount) GetValue() int64 {
 	if x != nil {
-		return x.Msg
+		return x.Value
+	}
+	return 0
+}
+
+type Acknowladgement struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Ack string `protobuf:"bytes,1,opt,name=Ack,proto3" json:"Ack,omitempty"` //fail, success or exception
+}
+
+func (x *Acknowladgement) Reset() {
+	*x = Acknowladgement{}
+	mi := &file_proto_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Acknowladgement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Acknowladgement) ProtoMessage() {}
+
+func (x *Acknowladgement) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Acknowladgement.ProtoReflect.Descriptor instead.
+func (*Acknowladgement) Descriptor() ([]byte, []int) {
+	return file_proto_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Acknowladgement) GetAck() string {
+	if x != nil {
+		return x.Ack
 	}
 	return ""
 }
 
-func (x *ClientMessage) GetKey() int32 {
+type Outcome struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AuctionDone  bool  `protobuf:"varint,1,opt,name=AuctionDone,proto3" json:"AuctionDone,omitempty"`
+	HighestValue int64 `protobuf:"varint,2,opt,name=HighestValue,proto3" json:"HighestValue,omitempty"`
+}
+
+func (x *Outcome) Reset() {
+	*x = Outcome{}
+	mi := &file_proto_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Outcome) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Outcome) ProtoMessage() {}
+
+func (x *Outcome) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_proto_msgTypes[2]
 	if x != nil {
-		return x.Key
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Outcome.ProtoReflect.Descriptor instead.
+func (*Outcome) Descriptor() ([]byte, []int) {
+	return file_proto_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Outcome) GetAuctionDone() bool {
+	if x != nil {
+		return x.AuctionDone
+	}
+	return false
+}
+
+func (x *Outcome) GetHighestValue() int64 {
+	if x != nil {
+		return x.HighestValue
 	}
 	return 0
 }
@@ -81,7 +171,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-	mi := &file_proto_proto_msgTypes[1]
+	mi := &file_proto_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -93,7 +183,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_proto_msgTypes[1]
+	mi := &file_proto_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,22 +196,30 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_proto_proto_rawDescGZIP(), []int{1}
+	return file_proto_proto_rawDescGZIP(), []int{3}
 }
 
 var File_proto_proto protoreflect.FileDescriptor
 
 var file_proto_proto_rawDesc = []byte{
-	0x0a, 0x0b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x33, 0x0a,
-	0x0d, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x10,
-	0x0a, 0x03, 0x6d, 0x73, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6d, 0x73, 0x67,
-	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x03, 0x6b,
-	0x65, 0x79, 0x22, 0x07, 0x0a, 0x05, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x32, 0x2f, 0x0a, 0x06, 0x43,
-	0x6c, 0x69, 0x65, 0x6e, 0x74, 0x12, 0x25, 0x0a, 0x09, 0x70, 0x61, 0x73, 0x73, 0x41, 0x6c, 0x6f,
-	0x6e, 0x67, 0x12, 0x0e, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61,
-	0x67, 0x65, 0x1a, 0x06, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x22, 0x00, 0x42, 0x0f, 0x5a, 0x0d,
-	0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x2f, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x0a, 0x0b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x1e, 0x0a,
+	0x06, 0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x56, 0x61, 0x6c, 0x75, 0x65,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x23, 0x0a,
+	0x0f, 0x41, 0x63, 0x6b, 0x6e, 0x6f, 0x77, 0x6c, 0x61, 0x64, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74,
+	0x12, 0x10, 0x0a, 0x03, 0x41, 0x63, 0x6b, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x41,
+	0x63, 0x6b, 0x22, 0x4f, 0x0a, 0x07, 0x4f, 0x75, 0x74, 0x63, 0x6f, 0x6d, 0x65, 0x12, 0x20, 0x0a,
+	0x0b, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x6f, 0x6e, 0x65, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x0b, 0x41, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x6f, 0x6e, 0x65, 0x12,
+	0x22, 0x0a, 0x0c, 0x48, 0x69, 0x67, 0x68, 0x65, 0x73, 0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0c, 0x48, 0x69, 0x67, 0x68, 0x65, 0x73, 0x74, 0x56, 0x61,
+	0x6c, 0x75, 0x65, 0x22, 0x07, 0x0a, 0x05, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x32, 0x4a, 0x0a, 0x06,
+	0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x12, 0x22, 0x0a, 0x03, 0x62, 0x69, 0x64, 0x12, 0x07, 0x2e,
+	0x41, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x1a, 0x10, 0x2e, 0x41, 0x63, 0x6b, 0x6e, 0x6f, 0x77, 0x6c,
+	0x61, 0x64, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x22, 0x00, 0x12, 0x1c, 0x0a, 0x06, 0x72, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x12, 0x06, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x08, 0x2e, 0x4f,
+	0x75, 0x74, 0x63, 0x6f, 0x6d, 0x65, 0x22, 0x00, 0x42, 0x0f, 0x5a, 0x0d, 0x43, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x2f, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -136,16 +234,20 @@ func file_proto_proto_rawDescGZIP() []byte {
 	return file_proto_proto_rawDescData
 }
 
-var file_proto_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_proto_goTypes = []any{
-	(*ClientMessage)(nil), // 0: ClientMessage
-	(*Empty)(nil),         // 1: Empty
+	(*Amount)(nil),          // 0: Amount
+	(*Acknowladgement)(nil), // 1: Acknowladgement
+	(*Outcome)(nil),         // 2: Outcome
+	(*Empty)(nil),           // 3: Empty
 }
 var file_proto_proto_depIdxs = []int32{
-	0, // 0: Client.passAlong:input_type -> ClientMessage
-	1, // 1: Client.passAlong:output_type -> Empty
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	0, // 0: Server.bid:input_type -> Amount
+	3, // 1: Server.result:input_type -> Empty
+	1, // 2: Server.bid:output_type -> Acknowladgement
+	2, // 3: Server.result:output_type -> Outcome
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -162,7 +264,7 @@ func file_proto_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
