@@ -21,6 +21,6 @@ message Empty {}
 // Interface exposed by the client
 service Server {
     rpc bid (Amount) returns (Acknowladgement) {};
-
     rpc result (Empty) returns (Outcome) {};
+    rpc leaderToFollowerUpdate (Amount) returns (Empty) {};
 }

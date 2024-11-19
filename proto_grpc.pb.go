@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Server_Bid_FullMethodName    = "/Server/bid"
-	Server_Result_FullMethodName = "/Server/result"
+	Server_Bid_FullMethodName                    = "/Server/bid"
+	Server_Result_FullMethodName                 = "/Server/result"
+	Server_LeaderToFollowerUpdate_FullMethodName = "/Server/leaderToFollowerUpdate"
 )
 
 // ServerClient is the client API for Server service.
@@ -31,6 +32,7 @@ const (
 type ServerClient interface {
 	Bid(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*Acknowladgement, error)
 	Result(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Outcome, error)
+	LeaderToFollowerUpdate(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type serverClient struct {
@@ -61,6 +63,16 @@ func (c *serverClient) Result(ctx context.Context, in *Empty, opts ...grpc.CallO
 	return out, nil
 }
 
+func (c *serverClient) LeaderToFollowerUpdate(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, Server_LeaderToFollowerUpdate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerServer is the server API for Server service.
 // All implementations must embed UnimplementedServerServer
 // for forward compatibility.
@@ -69,6 +81,7 @@ func (c *serverClient) Result(ctx context.Context, in *Empty, opts ...grpc.CallO
 type ServerServer interface {
 	Bid(context.Context, *Amount) (*Acknowladgement, error)
 	Result(context.Context, *Empty) (*Outcome, error)
+	LeaderToFollowerUpdate(context.Context, *Amount) (*Empty, error)
 	mustEmbedUnimplementedServerServer()
 }
 
@@ -84,6 +97,9 @@ func (UnimplementedServerServer) Bid(context.Context, *Amount) (*Acknowladgement
 }
 func (UnimplementedServerServer) Result(context.Context, *Empty) (*Outcome, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
+}
+func (UnimplementedServerServer) LeaderToFollowerUpdate(context.Context, *Amount) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LeaderToFollowerUpdate not implemented")
 }
 func (UnimplementedServerServer) mustEmbedUnimplementedServerServer() {}
 func (UnimplementedServerServer) testEmbeddedByValue()                {}
@@ -142,6 +158,24 @@ func _Server_Result_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Server_LeaderToFollowerUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Amount)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerServer).LeaderToFollowerUpdate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Server_LeaderToFollowerUpdate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerServer).LeaderToFollowerUpdate(ctx, req.(*Amount))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Server_ServiceDesc is the grpc.ServiceDesc for Server service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +190,10 @@ var Server_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "result",
 			Handler:    _Server_Result_Handler,
+		},
+		{
+			MethodName: "leaderToFollowerUpdate",
+			Handler:    _Server_LeaderToFollowerUpdate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
