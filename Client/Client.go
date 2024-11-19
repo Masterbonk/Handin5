@@ -2,9 +2,12 @@ package main
 
 import (
 	cc "Server"
+	"context"
 	"flag"
+	"fmt"
 	"log"
 	"math/rand/v2"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -13,8 +16,33 @@ import (
 
 var CurrentHighestBid int64
 
-func ServerConnection(client cc.ServerClient) {
+var lock sync.Mutex
 
+func getResult(outcome *cc.Outcome, client cc.ServerClient) {
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+	var out *cc.Outcome
+	out, _ = client.Result(newContext, &cc.Empty{})
+
+	*outcome = *out
+}
+
+func bid(bet int64, id int, bidFailed *bool, client cc.ServerClient) {
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+
+	var ack *cc.Acknowladgement
+	ack, _ = client.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
+
+	if ack.Ack == "success" {
+		lock.Lock()
+		if bet > CurrentHighestBid {
+			CurrentHighestBid = bet
+		}
+		lock.Unlock()
+	} else if ack.Ack == "fail" {
+		*bidFailed = true
+	} else if ack.Ack == "exception" {
+		fmt.Printf("Received exception from server\n")
+	}
 }
 
 func main() {
@@ -22,12 +50,19 @@ func main() {
 
 	ip := "localhost:"
 
+	var id int
+	flag.IntVar(&id, "i", -1, "Sets the ID of the client - must be unique")
+
 	var port1 string
 	flag.StringVar(&port1, "p1", "5050", "Sets the port of the server 1")
 
 	var port2 string
 	flag.StringVar(&port2, "p2", "5051", "Sets the port of the server 2")
 	flag.Parse()
+
+	if id == -1 {
+		panic("Client ID must be specified")
+	}
 
 	conn1, err := grpc.NewClient(ip+port1, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -40,41 +75,40 @@ func main() {
 	}
 
 	client1 := cc.NewServerClient(conn1)
-
 	client2 := cc.NewServerClient(conn2)
 
+	var currentPort = client1
+
 	var auctionClosed bool = false
-	for auctionClosed == false {
+	for !auctionClosed {
 		var outcome cc.Outcome = cc.Outcome{
-			AuctionDone: false,
+			AuctionDone:  false,
 			HighestValue: -1,
-    		WinnerId:-1}
-		go getResult(&outcome, port)
+			WinnerId:     -1}
+		go getResult(&outcome, currentPort)
 		time.Sleep(500 * time.Millisecond)
 
-		if outcome.WinnerId != -1 {
-			if !outcome.AuctionDone {
-				if id != outcome.WinnerId {
-					current = CurrentHighestBid
-					betValue = CurrentHighestBid+rand.Int64N(20)+1
-					go bid(betValue, port)
-					time.Sleep(500 * time.Millisecond)
-					if current == CurrentHighestBid {
-						go bid(betValue, port)
-					}
+		if outcome.WinnerId == -1 {
+			currentPort = client2
+			continue
+		}
+
+		if !outcome.AuctionDone {
+			if id != int(outcome.WinnerId) {
+				var current = CurrentHighestBid
+				var betValue = CurrentHighestBid + rand.Int64N(20) + 1
+				var bidFailed = false
+				go bid(betValue, id, &bidFailed, currentPort)
+				time.Sleep(500 * time.Millisecond)
+
+				if current == CurrentHighestBid && !bidFailed {
+					currentPort = client2
+					go bid(betValue, id, &bidFailed, currentPort)
 				}
 			}
+		} else {
+			auctionClosed = true
+			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", outcome.WinnerId, outcome.HighestValue)
 		}
 	}
-
-	/*
-		students, err := client1.GetStudents(context.Background(), &cc.Empty{})
-		if err != nil {
-			log.Fatalf("Not working 4")
-		}
-
-		for _, students := range students.Students {
-			println(" - " + students)
-		}
-	*/
 }
