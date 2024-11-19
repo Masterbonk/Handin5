@@ -2,9 +2,10 @@ package main
 
 import (
 	cc "Server"
-	"context"
 	"flag"
 	"log"
+	"math/rand/v2"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -12,10 +13,9 @@ import (
 
 var CurrentHighestBid int64
 
-func ServerConnection(client cc.ServerClient){
-	
-}
+func ServerConnection(client cc.ServerClient) {
 
+}
 
 func main() {
 	CurrentHighestBid = 0
@@ -43,19 +43,38 @@ func main() {
 
 	client2 := cc.NewServerClient(conn2)
 
+	var auctionClosed bool = false
+	for auctionClosed == false {
+		var outcome cc.Outcome = cc.Outcome{
+			AuctionDone: false,
+			HighestValue: -1,
+    		WinnerId:-1}
+		go getResult(&outcome, port)
+		time.Sleep(500 * time.Millisecond)
 
-
-
-
+		if outcome.WinnerId != -1 {
+			if !outcome.AuctionDone {
+				if id != outcome.WinnerId {
+					current = CurrentHighestBid
+					betValue = CurrentHighestBid+rand.Int64N(20)+1
+					go bid(betValue, port)
+					time.Sleep(500 * time.Millisecond)
+					if current == CurrentHighestBid {
+						go bid(betValue, port)
+					}
+				}
+			}
+		}
+	}
 
 	/*
-	students, err := client1.GetStudents(context.Background(), &cc.Empty{})
-	if err != nil {
-		log.Fatalf("Not working 4")
-	}
+		students, err := client1.GetStudents(context.Background(), &cc.Empty{})
+		if err != nil {
+			log.Fatalf("Not working 4")
+		}
 
-	for _, students := range students.Students {
-		println(" - " + students)
-	}
-		*/
+		for _, students := range students.Students {
+			println(" - " + students)
+		}
+	*/
 }
