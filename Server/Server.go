@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand/v2"
 	"net"
 	"time"
 
@@ -57,25 +56,72 @@ func (s *server) bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgemen
 		}
 
 		return &cc.Acknowladgement{Ack: "fail"}, nil
+	} else {
+		var temp cc.Acknowladgement = cc.Acknowladgement{
+			Ack: "exception"}
+		go betToLeader(Amount, &temp)
+		time.Sleep(500 * time.Millisecond)
+		if temp.Ack != "exception" {
+			return &temp, nil
+		} else {
+			leader = true
+			otherServerPort = ""
+			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+			return s.bid(newContext, Amount)
+		}
 	}
+
+}
+
+func betToLeader(Amount *cc.Amount, temp *cc.Acknowladgement) {
+	conn, _ := grpc.NewClient(ip+otherServerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+
+	client := cc.NewServerClient(conn)
+	temp, _ = client.Bid(newContext, Amount)
+
+}
+
+func resultFromLeader(temp *cc.Outcome) {
+
+	conn, _ := grpc.NewClient(ip+otherServerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+
+	client := cc.NewServerClient(conn)
+	temp, _ = client.Result(newContext, &cc.Empty{})
+
 }
 
 func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, error) {
-	return &cc.Outcome{
-		AuctionDone:  s.AuctionClosed,
-		HighestValue: s.HighestBid,
-		WinnerId:     s.Bidder}, nil
-}
+	if leader {
+		return &cc.Outcome{
+			AuctionDone:  s.AuctionClosed,
+			HighestValue: s.HighestBid,
+			WinnerId:     s.Bidder}, nil
+	} else {
 
-func (s *server) kill() {
-	time.Sleep(time.Duration(rand.IntN(12)) * time.Second)
-	deathChan <- true
+		var temp cc.Outcome = cc.Outcome{
+			AuctionDone:  false,
+			HighestValue: -1,
+			WinnerId:     -1}
+
+		go resultFromLeader(&temp)
+		time.Sleep(500 * time.Millisecond)
+		if temp.WinnerId != -1 {
+			return &temp, nil
+		} else {
+			leader = true
+			otherServerPort = ""
+			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+			return s.result(newContext, &cc.Empty{})
+		}
+	}
 
 }
 
 func main() {
-
-	deathChan = make(chan bool)
 
 	//Making server
 	var listenPort string
@@ -103,12 +149,6 @@ func main() {
 
 	go s.AuctionTimer()
 	grpcServer.Serve(lis)
-
-	// if die {
-	// 	go s.kill()
-	// }
-
-	// <-deathChan
 
 	//Nothing after this runs
 }
