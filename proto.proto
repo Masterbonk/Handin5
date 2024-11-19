@@ -16,11 +16,17 @@ message Outcome {
     int32 winnerId = 3;
 }
 
+message ServerToServer {
+    int64 Value = 1;
+    int32 Id = 2;
+    int64 Time = 3;
+}
+
 message Empty {}
 
 // Interface exposed by the client
 service Server {
     rpc bid (Amount) returns (Acknowladgement) {};
     rpc result (Empty) returns (Outcome) {};
-    rpc leaderToFollowerUpdate (Amount) returns (Empty) {};
+    rpc leaderToFollowerUpdate (ServerToServer) returns (Empty) {};
 }

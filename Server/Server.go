@@ -16,6 +16,7 @@ import (
 var leader bool
 var ip string = "localhost:"
 var otherServerPort string
+var int
 
 type server struct {
 	cc.UnimplementedServerServer
@@ -32,6 +33,10 @@ func NewServer() *server {
 func (s *server) AuctionTimer() {
 	time.Sleep(10 * time.Second)
 	s.AuctionClosed = true
+}
+
+func (s *server) LeaderToFollowerUpdate(ctx context.Context, input *cc.ServerToServer) (*cc.Acknowladgement, error) {
+
 }
 
 func (s *server) bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgement, error) {
