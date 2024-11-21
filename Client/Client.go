@@ -18,7 +18,9 @@ var CurrentHighestBid int64
 
 var lock sync.Mutex
 
-func getResult(outcome *cc.Outcome, client string) {
+var outcome cc.Outcome
+
+func getResult(client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
 	fmt.Printf("getResult started\n")
 
@@ -35,10 +37,12 @@ func getResult(outcome *cc.Outcome, client string) {
 
 	fmt.Printf("Result of out: Auction done %t, Highest value %d, Winner is %d\n", out.AuctionDone, out.HighestValue, out.WinnerId)
 	
-	outcome = &cc.Outcome{
+	/*outcome = cc.Outcome{
 		AuctionDone: out.AuctionDone,
 		HighestValue: out.HighestValue,
 		WinnerId: out.WinnerId}
+		*/
+	outcome = *out
 
 	fmt.Printf("Result of outcome: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
 
@@ -131,8 +135,8 @@ func main() {
 			HighestValue: -1,
 			WinnerId:     -1}
 		//var outcomePointer = &outcome
-		go getResult(&outcome, currentClient)
-		time.Sleep(500 * time.Millisecond)
+		go getResult(currentClient)
+		time.Sleep(3 * time.Second)
 		fmt.Printf("Result gotten: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
 
 		if outcome.WinnerId == -1 {
