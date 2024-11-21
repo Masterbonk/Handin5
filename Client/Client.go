@@ -21,16 +21,18 @@ var lock sync.Mutex
 func getResult(outcome *cc.Outcome, client cc.ServerClient) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
 	var out *cc.Outcome
-	out, _ = client.Result(newContext, &cc.Empty{})
+	var c cc.ServerClient = client
+	out, _ = c.Result(newContext, &cc.Empty{})
 
-	*outcome = *out
+	outcome = out
 }
 
 func bid(bet int64, id int, bidFailed *bool, client cc.ServerClient) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
 
 	var ack *cc.Acknowladgement
-	ack, _ = client.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
+	var c cc.ServerClient = client
+	ack, _ = c.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
 
 	if ack.Ack == "success" {
 		lock.Lock()
@@ -77,38 +79,39 @@ func main() {
 	client1 := cc.NewServerClient(conn1)
 	client2 := cc.NewServerClient(conn2)
 
-	var currentPort = client1
+	var currentClient cc.ServerClient = client1
 
 	var auctionClosed bool = false
 	for !auctionClosed {
-		var outcome cc.Outcome = cc.Outcome{
+		var outcome = cc.Outcome{
 			AuctionDone:  false,
 			HighestValue: -1,
 			WinnerId:     -1}
-		go getResult(&outcome, currentPort)
+		var outcomePointer = &outcome
+		go getResult(outcomePointer, currentClient)
 		time.Sleep(500 * time.Millisecond)
 
-		if outcome.WinnerId == -1 {
-			currentPort = client2
+		if (*outcomePointer).WinnerId == -1 {
+			currentClient = client2
 			continue
 		}
 
-		if !outcome.AuctionDone {
-			if id != int(outcome.WinnerId) {
+		if !(*outcomePointer).AuctionDone {
+			if id != int((*outcomePointer).WinnerId) {
 				var current = CurrentHighestBid
 				var betValue = CurrentHighestBid + rand.Int64N(20) + 1
 				var bidFailed = false
-				go bid(betValue, id, &bidFailed, currentPort)
+				go bid(betValue, id, &bidFailed, currentClient)
 				time.Sleep(500 * time.Millisecond)
 
 				if current == CurrentHighestBid && !bidFailed {
-					currentPort = client2
-					go bid(betValue, id, &bidFailed, currentPort)
+					currentClient = client2
+					go bid(betValue, id, &bidFailed, currentClient)
 				}
 			}
 		} else {
 			auctionClosed = true
-			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", outcome.WinnerId, outcome.HighestValue)
+			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", (*outcomePointer).WinnerId, (*outcomePointer).HighestValue)
 		}
 	}
 }

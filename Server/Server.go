@@ -16,10 +16,17 @@ import (
 var leader bool
 var ip string = "localhost:"
 var otherServerPort string
-var timeTracker int
 
-var StartTime time.Time
+var recievedFromLeader bool
 
+// Unix timestamp of when the auction started
+var StartTime int64
+
+
+var CurrentTime int64
+
+
+var auctionDuration int64
 
 type server struct {
 	cc.UnimplementedServerServer
@@ -34,25 +41,43 @@ func NewServer() *server {
 }
 
 func (s *server) AuctionTimer() {
-	for{
-		if StartTime.After(StartTime + time.Time(time.Second * 10))  {
-			
+	var counter = 0
+	for !recievedFromLeader {
+		time.Sleep(500 * time.Millisecond)
+		counter++
+		if counter == 10 {
+			recievedFromLeader = true
+		}
+	}
+
+	for {
+		if CurrentTime < StartTime+auctionDuration {
+			time.Sleep(time.Second)
+			CurrentTime++
+		} else {
+			break
 		}
 	}
 	s.AuctionClosed = true
 }
 
+// Called on the follower by the leader. Updates the state of the follower to match that of the leader
 func (s *server) LeaderToFollowerUpdate(ctx context.Context, input *cc.ServerToServer) (*cc.Empty, error) {
+	if !recievedFromLeader {
+		recievedFromLeader = true
+	}
+
 	if leader {
 		panic("WE ARE THE LEADER, BUT RECIEVE A UPDATE FROM A LEADER")
 	}
+
 	s.HighestBid = input.Value
 	s.Bidder = input.Id
-	timeTracker = int(input.Time)
 
-	if StartTime == time.Date(1,1,1,1,1,1,1, time.Now().Local().Location()){
-		tmp := time.Now()
-		StartTime = tmp.Add(-time.Duration(input.Time))
+	if input.Time != StartTime {
+		difference := input.Time - StartTime
+		StartTime = input.Time
+		CurrentTime = CurrentTime + difference
 	}
 
 	return &cc.Empty{}, nil
@@ -77,7 +102,7 @@ func (s *server) bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgemen
 				client.LeaderToFollowerUpdate(newContext, &cc.ServerToServer{
 					Value: Amount.Value,
 					Id:    Amount.Id,
-					Time:  int64(time.Since(StartTime))})
+					Time:  StartTime})
 			}
 
 			return &cc.Acknowladgement{Ack: "success"}, nil
@@ -137,6 +162,9 @@ func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, erro
 
 		go resultFromLeader(&temp)
 		time.Sleep(500 * time.Millisecond)
+
+		// if leader responded, returned modified value temp.
+		// else, become leader and return own result
 		if temp.WinnerId != -1 {
 			return &temp, nil
 		} else {
@@ -150,6 +178,10 @@ func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, erro
 }
 
 func main() {
+
+	auctionDuration = 5
+
+	recievedFromLeader = false
 
 	//Making server
 	var listenPort string
@@ -174,13 +206,24 @@ func main() {
 	grpcServer := grpc.NewServer()
 	var s *server = NewServer()
 	cc.RegisterServerServer(grpcServer, s)
-	if leader {
-		StartTime = time.Now()
-	} else{
-		StartTime = time.Date(1,1,1,1,1,1,1, time.Now().Local().Location())
-	}
+
+	StartTime = time.Now().Unix()
 
 	go s.AuctionTimer()
+
+	// give follower the start time
+	if leader {
+	 	recievedFromLeader = true
+	 	if otherServerPort != "" {
+	 		conn, _ := grpc.NewClient(ip+otherServerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	 		newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+
+	 		client := cc.NewServerClient(conn)
+
+	 		client.LeaderToFollowerUpdate(newContext, &cc.ServerToServer{Time: StartTime, Id: -1, Value: 0})
+	 	}
+	}
+
 	grpcServer.Serve(lis)
 
 	//Nothing after this runs
