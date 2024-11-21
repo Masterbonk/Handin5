@@ -7,52 +7,23 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var CurrentHighestBid int64
+var currentHighestBid int64
+var waitForServerMillis int64 = 1000
+var waitBetweenTriesMillis int64 = 2000
 
-var lock sync.Mutex
-
-func getResult(outcome *cc.Outcome, client cc.ServerClient) {
-	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-	var out *cc.Outcome
-	var c cc.ServerClient = client
-	out, _ = c.Result(newContext, &cc.Empty{})
-
-	outcome = out
-}
-
-func bid(bet int64, id int, bidFailed *bool, client cc.ServerClient) {
-	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-
-	var ack *cc.Acknowladgement
-	var c cc.ServerClient = client
-	ack, _ = c.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
-
-	if ack.Ack == "success" {
-		lock.Lock()
-		if bet > CurrentHighestBid {
-			CurrentHighestBid = bet
-		}
-		lock.Unlock()
-	} else if ack.Ack == "fail" {
-		*bidFailed = true
-	} else if ack.Ack == "exception" {
-		fmt.Printf("Received exception from server\n")
-	}
-}
+var id int
 
 func main() {
-	CurrentHighestBid = 0
+	currentHighestBid = 0
 
 	ip := "localhost:"
 
-	var id int
 	flag.IntVar(&id, "i", -1, "Sets the ID of the client - must be unique")
 
 	var port1 string
@@ -63,55 +34,127 @@ func main() {
 	flag.Parse()
 
 	if id == -1 {
-		panic("Client ID must be specified")
+		panic("Client ID must be specified\n")
 	}
 
 	conn1, err := grpc.NewClient(ip+port1, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Not working 3")
+		log.Fatalf("Not working 3\n")
 	}
 
 	conn2, err := grpc.NewClient(ip+port2, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Not working 3")
+		log.Fatalf("Not working 3\n")
 	}
 
-	client1 := cc.NewServerClient(conn1)
+	currentClient := cc.NewServerClient(conn1)
 	client2 := cc.NewServerClient(conn2)
 
-	var currentClient cc.ServerClient = client1
+	var auctionClosed = false
 
-	var auctionClosed bool = false
 	for !auctionClosed {
-		var outcome = cc.Outcome{
-			AuctionDone:  false,
-			HighestValue: -1,
-			WinnerId:     -1}
-		var outcomePointer = &outcome
-		go getResult(outcomePointer, currentClient)
-		time.Sleep(500 * time.Millisecond)
+		var outcome cc.Outcome
+		var receivedOutcome bool
 
-		if (*outcomePointer).WinnerId == -1 {
-			currentClient = client2
+		outcome, receivedOutcome = getResult(currentClient)
+
+		if !receivedOutcome {
+			if currentClient != client2 {
+				// try again with client 2
+				currentClient = client2
+				fmt.Printf("Switching to server 2\n")
+				continue
+			} else {
+				log.Fatalf("*** Both servers seem to have crashed! ***\n")
+			}
+		}
+
+		if outcome.AuctionDone {
+			auctionClosed = true
+			fmt.Printf("Auction is closed! Winner is user %d with a bid of %d!\n", outcome.WinnerId, outcome.HighestValue)
+			return
+		}
+
+		if outcome.WinnerId == int32(id) {
+			fmt.Printf("Still the winner!\n")
+			time.Sleep(time.Duration(waitBetweenTriesMillis) * time.Millisecond)
 			continue
 		}
 
-		if !(*outcomePointer).AuctionDone {
-			if id != int((*outcomePointer).WinnerId) {
-				var current = CurrentHighestBid
-				var betValue = CurrentHighestBid + rand.Int64N(20) + 1
-				var bidFailed = false
-				go bid(betValue, id, &bidFailed, currentClient)
-				time.Sleep(500 * time.Millisecond)
+		// bid
+		var currentHighestBid int64 = rand.Int64N(20) + 1
+		ack, receivedAck := makeBid(currentClient, currentHighestBid)
 
-				if current == CurrentHighestBid && !bidFailed {
-					currentClient = client2
-					go bid(betValue, id, &bidFailed, currentClient)
-				}
-			}
-		} else {
-			auctionClosed = true
-			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", (*outcomePointer).WinnerId, (*outcomePointer).HighestValue)
+		var success bool = receivedAck && ack.Ack == "success"
+
+		if !success && currentClient != client2 {
+			currentClient = client2
+			fmt.Printf("Switching to server 2\n")
+			ack, receivedAck = makeBid(currentClient, currentHighestBid)
+			success = receivedAck && ack.Ack == "success"
 		}
+
+		if success {
+			fmt.Printf("Successfully made bid with value %d\n", currentHighestBid)
+		} else {
+			fmt.Printf("Fail or exception in making bid!\n")
+		}
+		time.Sleep(time.Duration(waitBetweenTriesMillis) * time.Millisecond)
+	}
+}
+
+func getResult(client cc.ServerClient) (cc.Outcome, bool) {
+	fmt.Printf("Get result\n")
+	var outcomeChannel chan cc.Outcome = make(chan cc.Outcome)
+	var outcome cc.Outcome
+
+	go getResultFromServer(client, outcomeChannel)
+	var timeout = time.After(time.Duration(waitForServerMillis) * time.Millisecond)
+	var receivedOutcome bool
+
+	select {
+	case outcome = <-outcomeChannel:
+		receivedOutcome = true
+		fmt.Printf("Received outcome in time! Winner is %d\n", outcome.WinnerId)
+	case <-timeout:
+		receivedOutcome = false
+		fmt.Printf("Did not receive outcome in time!\n")
+	}
+
+	return outcome, receivedOutcome
+}
+
+func getResultFromServer(client cc.ServerClient, outcomeChannel chan cc.Outcome) {
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+	out, err := client.Result(newContext, &cc.Empty{})
+	if err == nil {
+		outcomeChannel <- *out
+	}
+}
+
+func makeBid(client cc.ServerClient, bidValue int64) (cc.Acknowladgement, bool) {
+	fmt.Printf("Make bid with value %d\n", bidValue)
+	var ackChan chan cc.Acknowladgement = make(chan cc.Acknowladgement)
+	var ack cc.Acknowladgement
+	go sendBidToServer(client, bidValue, ackChan)
+
+	var timeout = time.After(time.Duration(waitForServerMillis) * time.Millisecond)
+	var receivedAck bool
+
+	select {
+	case ack = <-ackChan:
+		receivedAck = true
+	case <-timeout:
+		receivedAck = false
+	}
+
+	return ack, receivedAck
+}
+
+func sendBidToServer(client cc.ServerClient, bidValue int64, ackChannel chan cc.Acknowladgement) {
+	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+	ack, err := client.Bid(newContext, &cc.Amount{Value: bidValue, Id: int32(id)})
+	if err == nil {
+		ackChannel <- *ack
 	}
 }
