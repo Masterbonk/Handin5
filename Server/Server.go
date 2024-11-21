@@ -14,7 +14,7 @@ import (
 )
 
 var leader bool
-var ip string = "localhost:"
+var ip string
 var otherServerPort string
 
 var recievedFromLeader bool
@@ -178,6 +178,8 @@ func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, erro
 }
 
 func main() {
+
+	ip = "localhost:"
 
 	auctionDuration = 5
 

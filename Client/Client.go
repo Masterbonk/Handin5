@@ -24,7 +24,10 @@ func getResult(outcome *cc.Outcome, client cc.ServerClient) {
 	var c cc.ServerClient = client
 	out, _ = c.Result(newContext, &cc.Empty{})
 
+
 	outcome = out
+
+
 }
 
 func bid(bet int64, id int, bidFailed *bool, client cc.ServerClient) {
@@ -90,8 +93,10 @@ func main() {
 		var outcomePointer = &outcome
 		go getResult(outcomePointer, currentClient)
 		time.Sleep(500 * time.Millisecond)
+		fmt.Printf("Result gotten: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
 
 		if (*outcomePointer).WinnerId == -1 {
+			fmt.Printf("Server 1 said no\n")
 			currentClient = client2
 			continue
 		}
@@ -101,11 +106,13 @@ func main() {
 				var current = CurrentHighestBid
 				var betValue = CurrentHighestBid + rand.Int64N(20) + 1
 				var bidFailed = false
+				fmt.Printf("Sending bid 1: %d\n", betValue)
 				go bid(betValue, id, &bidFailed, currentClient)
 				time.Sleep(500 * time.Millisecond)
 
 				if current == CurrentHighestBid && !bidFailed {
 					currentClient = client2
+					fmt.Printf("First bid fail, Sending bid 2: %d\n", betValue)
 					go bid(betValue, id, &bidFailed, currentClient)
 				}
 			}
