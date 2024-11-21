@@ -197,7 +197,7 @@ func main() {
 
 	ip = "localhost:"
 
-	auctionDuration = 10
+	auctionDuration = 30
 
 	recievedFromLeader = false
 

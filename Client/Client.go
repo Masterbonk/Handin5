@@ -130,7 +130,7 @@ func main() {
 
 	var auctionClosed bool = false
 	for !auctionClosed {
-		var outcome = cc.Outcome{
+		outcome = cc.Outcome{
 			AuctionDone:  false,
 			HighestValue: -1,
 			WinnerId:     -1}
