@@ -18,32 +18,63 @@ var CurrentHighestBid int64
 
 var lock sync.Mutex
 
-func getResult(outcome *cc.Outcome, client cc.ServerClient) {
+func getResult(outcome *cc.Outcome, client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-	var out *cc.Outcome
-	var c cc.ServerClient = client
-	out, _ = c.Result(newContext, &cc.Empty{})
+	fmt.Printf("getResult started\n")
+
+	conn, err := grpc.NewClient(client, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Not working 3")
+	}
+
+	c := cc.NewServerClient(conn)
+
+	out, _ := c.Result(newContext, &cc.Empty{})
+	time.Sleep(time.Second)
+	fmt.Printf("Outcome retrived\n")
+
+	fmt.Printf("Result of out: Auction done %t, Highest value %d, Winner is %d\n", out.AuctionDone, out.HighestValue, out.WinnerId)
+	
+	outcome = &cc.Outcome{
+		AuctionDone: out.AuctionDone,
+		HighestValue: out.HighestValue,
+		WinnerId: out.WinnerId}
+
+	fmt.Printf("Result of outcome: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
 
 
-	outcome = out
+	fmt.Printf("Outcome overwritten?\n")
 
 
 }
 
-func bid(bet int64, id int, bidFailed *bool, client cc.ServerClient) {
+func bid(bet int64, id int, bidFailed *bool, client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
+	fmt.Printf("bid started\n")
 
-	var ack *cc.Acknowladgement
-	var c cc.ServerClient = client
-	ack, _ = c.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
+	conn, err := grpc.NewClient(client, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Not working 3")
+	}
+
+	c := cc.NewServerClient(conn)
+
+	ack, _ := c.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
+	
+	//line 59 should error 
+	fmt.Println(ack.Ack)
+	
+	fmt.Printf("Acknowladgement retrived\n")
 
 	if ack.Ack == "success" {
+		fmt.Printf("Acknowladgement success\n")
 		lock.Lock()
 		if bet > CurrentHighestBid {
 			CurrentHighestBid = bet
 		}
 		lock.Unlock()
 	} else if ack.Ack == "fail" {
+		fmt.Printf("Acknowladgement fail\n")
 		*bidFailed = true
 	} else if ack.Ack == "exception" {
 		fmt.Printf("Received exception from server\n")
@@ -68,8 +99,9 @@ func main() {
 	if id == -1 {
 		panic("Client ID must be specified")
 	}
-
-	conn1, err := grpc.NewClient(ip+port1, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client1 := ip+port1
+	client2 := ip+port2
+	/*conn1, err := grpc.NewClient(ip+port1, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Not working 3")
 	}
@@ -81,8 +113,16 @@ func main() {
 
 	client1 := cc.NewServerClient(conn1)
 	client2 := cc.NewServerClient(conn2)
+	*/
 
-	var currentClient cc.ServerClient = client1
+	var currentClient string = client1
+
+	betValue := CurrentHighestBid + rand.Int64N(20) + 1
+	fmt.Printf("betValue %d\n", betValue)
+	var bidFailed = false
+	fmt.Printf("Sending bid 1: %d\n", betValue)
+	go bid(betValue, id, &bidFailed, currentClient)
+	time.Sleep(3 * time.Second)
 
 	var auctionClosed bool = false
 	for !auctionClosed {
@@ -90,19 +130,19 @@ func main() {
 			AuctionDone:  false,
 			HighestValue: -1,
 			WinnerId:     -1}
-		var outcomePointer = &outcome
-		go getResult(outcomePointer, currentClient)
+		//var outcomePointer = &outcome
+		go getResult(&outcome, currentClient)
 		time.Sleep(500 * time.Millisecond)
 		fmt.Printf("Result gotten: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
 
-		if (*outcomePointer).WinnerId == -1 {
+		if outcome.WinnerId == -1 {
 			fmt.Printf("Server 1 said no\n")
 			currentClient = client2
 			continue
 		}
 
-		if !(*outcomePointer).AuctionDone {
-			if id != int((*outcomePointer).WinnerId) {
+		if !outcome.AuctionDone {
+			if id != int(outcome.WinnerId) {
 				var current = CurrentHighestBid
 				var betValue = CurrentHighestBid + rand.Int64N(20) + 1
 				var bidFailed = false
@@ -118,7 +158,7 @@ func main() {
 			}
 		} else {
 			auctionClosed = true
-			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", (*outcomePointer).WinnerId, (*outcomePointer).HighestValue)
+			fmt.Printf("Auction is closed - Winner is client %d with bid %d\n", outcome.WinnerId, outcome.HighestValue)
 		}
 	}
 }

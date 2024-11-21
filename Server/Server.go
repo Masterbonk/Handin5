@@ -49,15 +49,17 @@ func (s *server) AuctionTimer() {
 			recievedFromLeader = true
 		}
 	}
-
+	fmt.Println("The auctiontimer has started")
 	for {
 		if CurrentTime < StartTime+auctionDuration {
 			time.Sleep(time.Second)
 			CurrentTime++
 		} else {
+			fmt.Println(CurrentTime)
 			break
 		}
 	}
+	fmt.Println("Auction closed")
 	s.AuctionClosed = true
 }
 
@@ -83,15 +85,21 @@ func (s *server) LeaderToFollowerUpdate(ctx context.Context, input *cc.ServerToS
 	return &cc.Empty{}, nil
 }
 
-func (s *server) bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgement, error) {
+func (s *server) Bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgement, error) {
+	fmt.Printf("Bid is called")
 	if leader {
 		if s.AuctionClosed {
 			return &cc.Acknowladgement{Ack: "fail"}, nil
 		}
 
+		fmt.Printf("Leader Highest big %d, bidder %d\n", s.HighestBid, s.Bidder)
+
 		if s.HighestBid < Amount.Value {
 			s.HighestBid = Amount.Value
 			s.Bidder = Amount.Id
+
+				fmt.Printf("Leader Highest big %d, bidder %d\n", s.HighestBid, s.Bidder)
+
 
 			if otherServerPort != "" {
 				conn, _ := grpc.NewClient(ip+otherServerPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -112,15 +120,18 @@ func (s *server) bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgemen
 	} else {
 		var temp cc.Acknowladgement = cc.Acknowladgement{
 			Ack: "exception"}
+
+		fmt.Printf("Follower Highest big %d, bidder %d\n", s.HighestBid, s.Bidder)
 		go betToLeader(Amount, &temp)
 		time.Sleep(500 * time.Millisecond)
+		fmt.Printf("Follower Highest big %d, bidder %d\n", s.HighestBid, s.Bidder)
 		if temp.Ack != "exception" {
 			return &temp, nil
 		} else {
 			leader = true
 			otherServerPort = ""
 			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-			return s.bid(newContext, Amount)
+			return s.Bid(newContext, Amount)
 		}
 	}
 
@@ -134,6 +145,8 @@ func betToLeader(Amount *cc.Amount, temp *cc.Acknowladgement) {
 	client := cc.NewServerClient(conn)
 	temp, _ = client.Bid(newContext, Amount)
 
+	fmt.Printf("Temp value in bid %s\n", temp.Ack)
+
 }
 
 func resultFromLeader(temp *cc.Outcome) {
@@ -145,9 +158,12 @@ func resultFromLeader(temp *cc.Outcome) {
 	client := cc.NewServerClient(conn)
 	temp, _ = client.Result(newContext, &cc.Empty{})
 
+	fmt.Printf("Result gotten from leader: Auction done %t, Highest value %d, Winner is %d\n", temp.AuctionDone, temp.HighestValue, temp.WinnerId)
+
 }
 
-func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, error) {
+func (s *server) Result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, error) {
+	fmt.Printf("Result is called\n")
 	if leader {
 		return &cc.Outcome{
 			AuctionDone:  s.AuctionClosed,
@@ -171,7 +187,7 @@ func (s *server) result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, erro
 			leader = true
 			otherServerPort = ""
 			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-			return s.result(newContext, &cc.Empty{})
+			return s.Result(newContext, &cc.Empty{})
 		}
 	}
 
@@ -181,7 +197,7 @@ func main() {
 
 	ip = "localhost:"
 
-	auctionDuration = 5
+	auctionDuration = 10
 
 	recievedFromLeader = false
 
@@ -211,6 +227,7 @@ func main() {
 
 	StartTime = time.Now().Unix()
 
+	CurrentTime = StartTime
 	go s.AuctionTimer()
 
 	// give follower the start time
@@ -226,7 +243,8 @@ func main() {
 	 	}
 	}
 
+	fmt.Println("Server, begins to run")
 	grpcServer.Serve(lis)
-
+	fmt.Println("Server, endline should not do")
 	//Nothing after this runs
 }
