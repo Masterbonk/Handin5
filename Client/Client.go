@@ -22,7 +22,6 @@ var outcome cc.Outcome
 
 func getResult(client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-	fmt.Printf("getResult started\n")
 
 	conn, err := grpc.NewClient(client, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -31,30 +30,26 @@ func getResult(client string) {
 
 	c := cc.NewServerClient(conn)
 
-	out, _ := c.Result(newContext, &cc.Empty{})
-	time.Sleep(time.Second)
-	fmt.Printf("Outcome retrived\n")
-
-	fmt.Printf("Result of out: Auction done %t, Highest value %d, Winner is %d\n", out.AuctionDone, out.HighestValue, out.WinnerId)
 	
-	/*outcome = cc.Outcome{
-		AuctionDone: out.AuctionDone,
-		HighestValue: out.HighestValue,
-		WinnerId: out.WinnerId}
-		*/
+
+	out, _ := c.Result(newContext, &cc.Empty{})
+	
+	if out == nil{
+		out = &cc.Outcome{
+			AuctionDone: false,
+			HighestValue: -1,
+			WinnerId: -1}
+	}
 	outcome = *out
-
-	fmt.Printf("Result of outcome: Auction done %t, Highest value %d, Winner is %d\n", outcome.AuctionDone, outcome.HighestValue, outcome.WinnerId)
-
-
-	fmt.Printf("Outcome overwritten?\n")
-
-
+	
+	CurrentHighestBid = outcome.HighestValue
 }
 
 func bid(bet int64, id int, bidFailed *bool, client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
 	fmt.Printf("bid started\n")
+
+	time.Sleep(1000 * time.Millisecond)
 
 	conn, err := grpc.NewClient(client, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -64,11 +59,15 @@ func bid(bet int64, id int, bidFailed *bool, client string) {
 	c := cc.NewServerClient(conn)
 
 	ack, _ := c.Bid(newContext, &cc.Amount{Value: bet, Id: int32(id)})
+
 	
-	//line 59 should error 
-	fmt.Println(ack.Ack)
-	
+		
 	fmt.Printf("Acknowladgement retrived\n")
+
+	if ack == nil{
+	 	ack = &cc.Acknowladgement{
+		Ack: "exception"}
+	}
 
 	if ack.Ack == "success" {
 		fmt.Printf("Acknowladgement success\n")
@@ -81,6 +80,7 @@ func bid(bet int64, id int, bidFailed *bool, client string) {
 		fmt.Printf("Acknowladgement fail\n")
 		*bidFailed = true
 	} else if ack.Ack == "exception" {
+		*bidFailed = true
 		fmt.Printf("Received exception from server\n")
 	}
 }
@@ -105,19 +105,6 @@ func main() {
 	}
 	client1 := ip+port1
 	client2 := ip+port2
-	/*conn1, err := grpc.NewClient(ip+port1, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Not working 3")
-	}
-
-	conn2, err := grpc.NewClient(ip+port2, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Not working 3")
-	}
-
-	client1 := cc.NewServerClient(conn1)
-	client2 := cc.NewServerClient(conn2)
-	*/
 
 	var currentClient string = client1
 
@@ -125,6 +112,7 @@ func main() {
 	fmt.Printf("betValue %d\n", betValue)
 	var bidFailed = false
 	fmt.Printf("Sending bid 1: %d\n", betValue)
+
 	go bid(betValue, id, &bidFailed, currentClient)
 	time.Sleep(3 * time.Second)
 
@@ -154,7 +142,7 @@ func main() {
 				go bid(betValue, id, &bidFailed, currentClient)
 				time.Sleep(500 * time.Millisecond)
 
-				if current == CurrentHighestBid && !bidFailed {
+				if current == CurrentHighestBid && bidFailed {
 					currentClient = client2
 					fmt.Printf("First bid fail, Sending bid 2: %d\n", betValue)
 					go bid(betValue, id, &bidFailed, currentClient)
