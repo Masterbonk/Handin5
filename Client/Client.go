@@ -15,7 +15,7 @@ import (
 
 var currentHighestBid int64
 var waitForServerMillis int64 = 1000
-var waitBetweenTriesMillis int64 = 2000
+var waitBetweenTriesMillis int64 = 1000
 
 var id int
 
@@ -87,12 +87,15 @@ func main() {
 
 		var success bool = receivedAck && ack.Ack == "success"
 
-		if !success && currentClient != client2 {
+		fmt.Printf("Success: %t, receivedAck: %t\n", success, receivedAck)
+
+		if !receivedAck && currentClient != client2 {
 			currentClient = client2
 			fmt.Printf("Switching to server 2\n")
 			ack, receivedAck = makeBid(currentClient, currentHighestBid)
-			success = receivedAck && ack.Ack == "success"
 		}
+
+		success = receivedAck && ack.Ack == "success"
 
 		if success {
 			fmt.Printf("Successfully made bid with value %d\n", currentHighestBid)
@@ -104,7 +107,7 @@ func main() {
 }
 
 func getResult(client cc.ServerClient) (cc.Outcome, bool) {
-	fmt.Printf("Get result\n")
+	fmt.Printf("\nGet result\n")
 	var outcomeChannel chan cc.Outcome = make(chan cc.Outcome)
 	var outcome cc.Outcome
 
@@ -129,6 +132,8 @@ func getResultFromServer(client cc.ServerClient, outcomeChannel chan cc.Outcome)
 	out, err := client.Result(newContext, &cc.Empty{})
 	if err == nil {
 		outcomeChannel <- *out
+	} else {
+		fmt.Println(err)
 	}
 }
 
