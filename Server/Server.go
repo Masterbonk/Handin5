@@ -52,17 +52,15 @@ func (s *server) AuctionTimer() {
 			recievedFromLeader = true
 		}
 	}
-	fmt.Println("The auctiontimer has started")
 	for {
 		if CurrentTime < StartTime+auctionDuration {
 			time.Sleep(time.Second)
 			CurrentTime++
 		} else {
-			fmt.Println(CurrentTime)
+			fmt.Printf("The auction is closed at unix time %d\n",CurrentTime)
 			break
 		}
 	}
-	fmt.Println("Auction closed")
 	s.AuctionClosed = true
 }
 
@@ -91,17 +89,15 @@ func (s *server) LeaderToFollowerUpdate(ctx context.Context, input *cc.ServerToS
 func (s *server) Bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgement, error) {
 	if leader {
 		if s.AuctionClosed {
-			fmt.Printf("Leader bid, auction closed\n")
+			fmt.Printf("Telling client that the auction is closed\n")
 			return &cc.Acknowladgement{Ack: "fail"}, nil
 		}
-
-		fmt.Printf("Leader Highest big 1 %d, bidder %d\n", s.HighestBid, s.Bidder)
 
 		if s.HighestBid < Amount.Value {
 			s.HighestBid = Amount.Value
 			s.Bidder = Amount.Id
 
-				fmt.Printf("Leader Highest big 2 %d, bidder %d\n", s.HighestBid, s.Bidder)
+				fmt.Printf("The current highest bid is %d, from bidder %d\n", s.HighestBid, s.Bidder)
 
 
 			if otherServerPort != "" {
@@ -115,7 +111,6 @@ func (s *server) Bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgemen
 					Id:    Amount.Id,
 					Time:  StartTime})
 			}
-			fmt.Println("Sending suc ack")
 			return &cc.Acknowladgement{Ack: "success"}, nil
 		}
 
@@ -124,14 +119,13 @@ func (s *server) Bid(ctx context.Context, Amount *cc.Amount) (*cc.Acknowladgemen
 		baseAck = cc.Acknowladgement{
 			Ack: "exception"}
 
-		fmt.Printf("Follower Highest big 1 %d, bidder %d\n", s.HighestBid, s.Bidder)
 		go betToLeader(Amount)
 		time.Sleep(500 * time.Millisecond)
-		fmt.Printf("Follower Highest big 2 %d, bidder %d\n", s.HighestBid, s.Bidder)
+		fmt.Printf("The current highest bid is %d, from bidder %d\n", s.HighestBid, s.Bidder)
 		if baseAck.Ack != "exception" {
 			return &baseAck, nil
 		} else {
-			fmt.Println("Exception leader change")
+			fmt.Println("I have become new leader")
 			leader = true
 			otherServerPort = ""
 			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
@@ -158,7 +152,6 @@ func betToLeader(Amount *cc.Amount) {
 
 	baseAck = *base
 
-	fmt.Printf("baseAck betToLeader %s\n", baseAck.Ack)
 }
 
 func resultFromLeader() {
@@ -180,7 +173,6 @@ func resultFromLeader() {
 	
 	leaderResult = *temp
 
-	//fmt.Printf("Result gotten from leader: Auction done %t, Highest value %d, Winner is %d\n", leaderResult.AuctionDone, leaderResult.HighestValue, leaderResult.WinnerId)
 
 }
 
@@ -205,7 +197,7 @@ func (s *server) Result(ctx context.Context, Empty *cc.Empty) (*cc.Outcome, erro
 		if leaderResult.WinnerId != -1 {
 			return &leaderResult, nil
 		} else {
-			fmt.Println("WinnerId -1 leader change")
+			fmt.Println("I have become new leader")
 			leader = true
 			otherServerPort = ""
 			newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)

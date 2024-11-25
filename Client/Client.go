@@ -47,7 +47,6 @@ func getResult(client string) {
 
 func bid(bet int64, id int, bidFailed *bool, client string) {
 	newContext, _ := context.WithTimeout(context.Background(), 2000*time.Second)
-	fmt.Printf("bid started\n")
 
 	time.Sleep(1000 * time.Millisecond)
 
@@ -62,7 +61,6 @@ func bid(bet int64, id int, bidFailed *bool, client string) {
 
 	
 		
-	fmt.Printf("Acknowladgement retrived\n")
 
 	if ack == nil{
 	 	ack = &cc.Acknowladgement{
@@ -70,18 +68,15 @@ func bid(bet int64, id int, bidFailed *bool, client string) {
 	}
 
 	if ack.Ack == "success" {
-		fmt.Printf("Acknowladgement success\n")
 		lock.Lock()
 		if bet > CurrentHighestBid {
 			CurrentHighestBid = bet
 		}
 		lock.Unlock()
 	} else if ack.Ack == "fail" {
-		fmt.Printf("Acknowladgement fail\n")
 		*bidFailed = true
 	} else if ack.Ack == "exception" {
 		*bidFailed = true
-		fmt.Printf("Received exception from server\n")
 	}
 }
 
@@ -109,9 +104,7 @@ func main() {
 	var currentClient string = client1
 
 	betValue := CurrentHighestBid + rand.Int64N(20) + 1
-	fmt.Printf("betValue %d\n", betValue)
 	var bidFailed = false
-	fmt.Printf("Sending bid 1: %d\n", betValue)
 
 	go bid(betValue, id, &bidFailed, currentClient)
 	time.Sleep(3 * time.Second)

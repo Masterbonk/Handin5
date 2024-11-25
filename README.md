@@ -1,7 +1,7 @@
 # Handin5
 
 ## To run the servers
-To run the server, it is recommended that you start 4 terminals up.
+To run the server, it is recommended that you start 4 terminals up. When you wish for a server to crash, you can simply close that terminal, or use `ctrl+c` to end the program running.
 
 The first two terminals should be servers, the commands assumes that you are at the top of the folder for the program, so one layer abover Server.go. Servers can be started with the base command:
 `go run Server/Server.go` 
